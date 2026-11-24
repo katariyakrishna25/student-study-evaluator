@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Heart } from 'lucide-react';
+import { ShieldCheck, Server, ExternalLink } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -13,15 +13,21 @@ export default function Footer() {
             <strong>EduPredict System</strong>
           </div>
           <p className="footer-disclaimer">
-            Academic Assessment Platform. Evaluates student performance benchmark based on standard study hours.
+            Academic assessment system integrated with live FastAPI model on Render.
           </p>
         </div>
 
         <div className="footer-center">
-          <div className="benchmark-badge">
-            <ShieldCheck size={16} className="text-emerald" />
-            <span>Pass Threshold Standard: <strong>4.0 Hours/Day</strong></span>
-          </div>
+          <a
+            href="https://studyhours-result.onrender.com"
+            target="_blank"
+            rel="noreferrer"
+            className="benchmark-badge"
+          >
+            <Server size={15} className="text-emerald" />
+            <span>API: <strong>studyhours-result.onrender.com</strong></span>
+            <ExternalLink size={13} className="api-link-icon" />
+          </a>
         </div>
 
         <div className="footer-right">
@@ -29,7 +35,7 @@ export default function Footer() {
             © {currentYear} EduPredict. All rights reserved.
           </p>
           <p className="credit-text">
-            Engineered with React.js & modern UI standards.
+            Frontend deployed on Render • Built with React.js & Vite
           </p>
         </div>
       </div>

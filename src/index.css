@@ -761,3 +761,70 @@ body {
     align-items: flex-start;
   }
 }
+
+
+/* ==========================================================================
+   Backend API Integration Additions
+   ========================================================================== */
+.api-icon {
+  color: var(--primary-600);
+}
+
+.backend-link-pill {
+  color: var(--primary-700);
+  font-weight: 700;
+  text-decoration: none;
+  font-family: monospace;
+  font-size: 0.76rem;
+  background: var(--primary-light);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  transition: all 0.15s ease;
+}
+
+.backend-link-pill:hover {
+  text-decoration: underline;
+  color: var(--primary-600);
+}
+
+.label-subtext {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.badges-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.06);
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-full);
+}
+
+.cors-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.api-link-icon {
+  color: var(--text-muted);
+}

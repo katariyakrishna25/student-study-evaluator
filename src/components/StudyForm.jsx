@@ -1,22 +1,34 @@
 import React, { useState } from 'react';
-import { Clock, CheckCircle2, XCircle, AlertTriangle, ArrowRight, RotateCcw, Award, TrendingUp } from 'lucide-react';
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
+  RotateCcw,
+  Award,
+  TrendingUp,
+  Cpu,
+  Info
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+// Backend endpoint on Render
+const BACKEND_API_URL = 'https://studyhours-result.onrender.com/predresult';
 
 export default function StudyForm() {
   const [studyHours, setStudyHours] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
-
-  // Passing threshold: 4.0 hours
-  const PASS_THRESHOLD = 4.0;
+  const [evalStatusText, setEvalStatusText] = useState('Evaluating...');
 
   const handleInputChange = (e) => {
     setStudyHours(e.target.value);
     if (error) setError('');
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setResult(null);
@@ -35,7 +47,7 @@ export default function StudyForm() {
     }
 
     if (hours < 0) {
-      setError('Study hours cannot be negative. Please enter a value of 0 or greater.');
+      setError('Study hours cannot be negative. Please enter 0 or greater.');
       return;
     }
 
@@ -44,38 +56,100 @@ export default function StudyForm() {
       return;
     }
 
-    // Processing evaluation with subtle animation delay for realistic UX
     setIsEvaluating(true);
+    setEvalStatusText('Querying AI Backend API...');
 
-    setTimeout(() => {
-      setIsEvaluating(false);
-      const isPass = hours >= PASS_THRESHOLD;
+    try {
+      // First attempt: call Render Backend API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout for cold start
 
-      // Calculate readiness score (estimate percentage up to 100%)
-      const readinessScore = Math.min(Math.round((hours / 8.0) * 100), 100);
+      const response = await fetch(BACKEND_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ StudyHours: hours }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Backend returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Expected backend response:
+      // { "StudyHours": 7.0, "Probability": 0.88, "Threshold": 0.5, "Result": "Pass" }
+      const isPass = (data.Result || '').toLowerCase() === 'pass';
+      const probPercent = typeof data.Probability === 'number'
+        ? Math.round(data.Probability * 100)
+        : (isPass ? 85 : 35);
+      const thresholdPercent = typeof data.Threshold === 'number'
+        ? Math.round(data.Threshold * 100)
+        : 50;
 
       setResult({
-        hours: hours,
+        hours: data.StudyHours ?? hours,
         isPass: isPass,
-        score: readinessScore,
+        probability: probPercent,
+        threshold: thresholdPercent,
+        rawResult: data.Result || (isPass ? 'Pass' : 'Fail'),
+        source: 'Render Live Backend API',
         title: isPass ? 'Result: PASS' : 'Result: FAIL',
         message: isPass
-          ? `Great Job! With ${hours} hour${hours === 1 ? '' : 's'} of dedicated study, the student meets the qualification standard and is predicted to PASS.`
-          : `Needs Improvement! With only ${hours} hour${hours === 1 ? '' : 's'} of study, the student falls below the required ${PASS_THRESHOLD} hours benchmark and is predicted to FAIL.`,
+          ? `Congratulations! With ${hours} daily study hours, the AI model predicts a ${probPercent}% pass probability (threshold: ${thresholdPercent}%), projecting the student will PASS.`
+          : `Needs Improvement! With ${hours} daily study hours, the AI model projects a ${probPercent}% pass probability, which falls below the ${thresholdPercent}% passing threshold.`,
         tip: isPass
-          ? 'Maintain this consistent study habit to secure top academic honors!'
-          : `Increase study time by at least ${(PASS_THRESHOLD - hours).toFixed(1)} more hours daily to achieve passing status.`
+          ? 'Exceptional dedication! Maintain consistent daily study to secure top honors.'
+          : 'Recommendation: Increase daily study hours toward 6.0+ hrs to elevate pass probability.'
       });
 
       if (isPass) {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 85,
+          spread: 75,
           origin: { y: 0.6 },
           colors: ['#10B981', '#34D399', '#6EE7B7', '#3B82F6', '#F59E0B']
         });
       }
-    }, 350);
+    } catch (apiError) {
+      console.warn('Backend API request notice:', apiError);
+
+      // Fallback calculation in case Render free instance is waking up or browser CORS requires allowance
+      const fallbackPassThreshold = 5.5; // Model threshold is approx 5.5h (5h gave 0.41, 7h gave 0.88)
+      const isPass = hours >= fallbackPassThreshold;
+      const estimatedProb = Math.min(Math.max(Math.round(100 / (1 + Math.exp(-1.1 * (hours - 5.5)))), 5), 98);
+
+      setResult({
+        hours: hours,
+        isPass: isPass,
+        probability: estimatedProb,
+        threshold: 50,
+        rawResult: isPass ? 'Pass' : 'Fail',
+        source: 'Estimated Outcome (Backend waking up or CORS check)',
+        corsNotice: 'Note: Ensure your FastAPI backend has CORSMiddleware enabled so browser requests connect seamlessly.',
+        title: isPass ? 'Result: PASS' : 'Result: FAIL',
+        message: isPass
+          ? `With ${hours} daily study hours, the model projects an estimated ${estimatedProb}% pass probability, predicting the student will PASS.`
+          : `With ${hours} daily study hours, the model projects an estimated ${estimatedProb}% pass probability, falling below the 50% passing threshold.`,
+        tip: isPass
+          ? 'Good study regimen! Continue practicing past exam papers.'
+          : 'Increase daily revision hours to push your projected score above 50%.'
+      });
+
+      if (isPass) {
+        confetti({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.6 }
+        });
+      }
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   const handleReset = () => {
@@ -90,12 +164,12 @@ export default function StudyForm() {
         {/* Card Header */}
         <div className="card-header">
           <div className="badge-chip">
-            <Award size={15} />
-            <span>Academic Performance Assessment</span>
+            <Cpu size={15} />
+            <span>AI Predictive Model • Render Hosted</span>
           </div>
-          <h2 className="card-title">Check Student Pass / Fail Status</h2>
+          <h2 className="card-title">Student Study Hours & Outcome</h2>
           <p className="card-subtitle">
-            Enter the student's daily study hours below to calculate their examination outcome.
+            Enter daily study hours to run real-time inference via your live FastAPI backend.
           </p>
         </div>
 
@@ -103,9 +177,10 @@ export default function StudyForm() {
         <form className="study-form" onSubmit={handleFormSubmit}>
           <div className="form-group">
             <label htmlFor="studyHoursInput" className="form-label">
-              Enter Student Study Hours:
+              <span>Enter Student Study Hours:</span>
+              <span className="label-subtext">0 - 24 hrs</span>
             </label>
-            
+
             <div className={`input-field-wrapper ${error ? 'input-error' : ''}`}>
               <div className="input-prefix-icon">
                 <Clock size={20} />
@@ -116,7 +191,7 @@ export default function StudyForm() {
                 step="0.1"
                 min="0"
                 max="24"
-                placeholder="e.g. 5.5"
+                placeholder="e.g. 6.0"
                 value={studyHours}
                 onChange={handleInputChange}
                 className="form-text-input"
@@ -142,7 +217,7 @@ export default function StudyForm() {
               {isEvaluating ? (
                 <span className="btn-loader-text">
                   <span className="spinner"></span>
-                  Evaluating...
+                  {evalStatusText}
                 </span>
               ) : (
                 <span className="btn-content">
@@ -166,30 +241,30 @@ export default function StudyForm() {
           </div>
         </form>
 
-        {/* Quick Suggestion Presets */}
+        {/* Quick Suggestion Presets based on your ML Model */}
         <div className="presets-container">
-          <span className="presets-label">Quick Test Values:</span>
+          <span className="presets-label">Quick Test Presets:</span>
           <div className="preset-buttons">
             <button
               type="button"
               className="preset-tag"
-              onClick={() => { setStudyHours('2'); setError(''); }}
+              onClick={() => { setStudyHours('2.0'); setError(''); }}
             >
-              2.0 hrs (Low)
+              2.0 hrs (Fail ~ 2%)
             </button>
             <button
               type="button"
               className="preset-tag"
-              onClick={() => { setStudyHours('4.0'); setError(''); }}
+              onClick={() => { setStudyHours('5.0'); setError(''); }}
             >
-              4.0 hrs (Threshold)
+              5.0 hrs (Borderline ~ 41%)
             </button>
             <button
               type="button"
               className="preset-tag"
-              onClick={() => { setStudyHours('6.5'); setError(''); }}
+              onClick={() => { setStudyHours('7.0'); setError(''); }}
             >
-              6.5 hrs (High)
+              7.0 hrs (Pass ~ 88%)
             </button>
           </div>
         </div>
@@ -204,35 +279,43 @@ export default function StudyForm() {
             <div className="result-header">
               <div className="result-icon-box">
                 {result.isPass ? (
-                  <CheckCircle2 size={32} className="icon-success" />
+                  <CheckCircle2 size={34} className="icon-success" />
                 ) : (
-                  <XCircle size={32} className="icon-fail" />
+                  <XCircle size={34} className="icon-fail" />
                 )}
               </div>
               <div className="result-headings">
-                <span className={`status-pill ${result.isPass ? 'pill-pass' : 'pill-fail'}`}>
-                  {result.isPass ? 'PASSED' : 'FAILED'}
-                </span>
+                <div className="badges-row">
+                  <span className={`status-pill ${result.isPass ? 'pill-pass' : 'pill-fail'}`}>
+                    {result.isPass ? 'PASSED' : 'FAILED'}
+                  </span>
+                  <span className="source-badge">
+                    <Cpu size={12} />
+                    {result.source}
+                  </span>
+                </div>
                 <h3 className="result-main-title">{result.title}</h3>
               </div>
             </div>
 
             <div className="result-body">
               <p className="result-message">{result.message}</p>
-              
+
               <div className="result-metrics">
                 <div className="metric-row">
                   <div className="metric-info">
                     <span className="metric-label">
                       <TrendingUp size={16} />
-                      Academic Preparedness Score
+                      Model Pass Probability
                     </span>
-                    <span className="metric-value">{result.score}%</span>
+                    <span className="metric-value">
+                      <strong>{result.probability}%</strong> (Threshold: {result.threshold}%)
+                    </span>
                   </div>
                   <div className="progress-bar-bg">
                     <div
                       className={`progress-bar-fill ${result.isPass ? 'fill-pass' : 'fill-fail'}`}
-                      style={{ width: `${result.score}%` }}
+                      style={{ width: `${result.probability}%` }}
                     ></div>
                   </div>
                 </div>
@@ -241,6 +324,13 @@ export default function StudyForm() {
               <div className="result-tip-box">
                 <strong>Advisory Note:</strong> {result.tip}
               </div>
+
+              {result.corsNotice && (
+                <div className="cors-info-box">
+                  <Info size={15} />
+                  <span>{result.corsNotice}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

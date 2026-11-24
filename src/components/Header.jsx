@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, Sparkles, BookOpen } from 'lucide-react';
+import { GraduationCap, Server } from 'lucide-react';
 
 export default function Header() {
   return (
@@ -13,14 +13,22 @@ export default function Header() {
             <h1 className="brand-title">
               Edu<span>Predict</span>
             </h1>
-            <p className="brand-tagline">Academic Performance & Result Predictor</p>
+            <p className="brand-tagline">AI Student Academic Outcome Predictor</p>
           </div>
         </div>
 
         <div className="header-status-pill">
           <span className="status-dot"></span>
-          <span className="status-text">Official Evaluation Standard</span>
-          <span className="badge-tag">Pass Mark: 4.0+ hrs</span>
+          <Server size={14} className="api-icon" />
+          <span className="status-text">Backend Connected:</span>
+          <a
+            href="https://studyhours-result.onrender.com"
+            target="_blank"
+            rel="noreferrer"
+            className="backend-link-pill"
+          >
+            studyhours-result.onrender.com
+          </a>
         </div>
       </div>
     </header>
