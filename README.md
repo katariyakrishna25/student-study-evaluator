@@ -20,9 +20,7 @@ A modern, responsive single-page web application built with **React.js** to eval
 ## 🚀 How to Run the Project Locally
 
 1. Open your terminal in this project folder:
-   ```bash
-   cd "c:\Users\katar\OneDrive\Desktop\fronted study"
-   ```
+  
 
 2. Run the development server:
    ```bash
